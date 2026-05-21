@@ -1,0 +1,9 @@
+{
+  "name": "merge-to-main-plugin",
+  "description": "Helps merge feature branches into main safely",
+  "version": "1.0.0",
+  "author": {
+    "name": "Stefan Rows",
+    "email": "stefanrows@gmail.com"
+  }
+}

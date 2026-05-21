@@ -1,0 +1,26 @@
+{
+  "$schema": "https://code.claude.com/schemas/marketplace.json",
+  "name": "stefanrows-plugins",
+  "description": "Claude Code plugins by Stefan Rows",
+  "owner": {
+    "name": "Stefan Rows",
+    "email": "stefanrows@gmail.com"
+  },
+  "plugins": [
+    {
+      "name": "merge-to-main-plugin",
+      "source": "./plugins/merge-to-main-plugin",
+      "description": "Safe merge-to-main workflow with pre-merge checks, conventional commits, doc updates, and post-deploy verification.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Stefan Rows",
+        "email": "stefanrows@gmail.com"
+      },
+      "homepage": "https://github.com/stefanrows/claude-code-plugins",
+      "repository": "https://github.com/stefanrows/claude-code-plugins",
+      "license": "MIT",
+      "keywords": ["git", "merge", "workflow", "release", "ci"],
+      "category": "workflow"
+    }
+  ]
+}
