@@ -14,17 +14,21 @@ A repeatable, safe workflow for landing changes on `main`. Adapt each step to th
 
 1. **Start fresh.** Pull latest `main` and create a new branch with a conventional prefix (`feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `test/`). Always create a fresh branch — never reuse an existing one for a new change.
 
-2. **Update docs.** Revise `CLAUDE.md`, `README.md`, and any relevant files under `docs/`. Reflect the changes being shipped, remove anything outdated, and consolidate duplicates.
+2. **Update docs.** Keep all documentation surfaces current with the changes being shipped:
+
+   - **Repo docs:** Revise `CLAUDE.md`, `README.md`, and any relevant files under `docs/`. Remove outdated content and consolidate duplicates.
+   - **In-app or routed docs (if present):** Before merging, check whether the project ships browsable docs — routes like `/docs` or `/api`, OpenAPI/Swagger specs, Storybook, or a separate docs app (`apps/docs`, `website/`, Docusaurus, VitePress, or equivalent). If the branch changes behavior those docs describe (APIs, CLI commands, config/env vars, UI flows, permissions, error codes), update the matching pages in the same branch — not as a follow-up. Treat stale live docs the same as a broken test: a blocker to merge.
 
 3. **Verify the build.** Run the project's lint, test, and build commands. Detect them from the project files; common examples:
    - Node: `npm run lint && npm test && npm run build`
    - Python: `ruff check && pytest && python -m build`
    - Go: `go vet ./... && go test ./... && go build ./...`
    - Rust: `cargo clippy && cargo test && cargo build --release`
+   - If the project defines a docs build (e.g. `npm run docs:build`, `mkdocs build`, `docusaurus build`), run it too — broken links, MDX errors, and missing pages should fail before merge. Detect the command from `package.json` scripts, `Makefile`, or CI workflows.
 
 4. **Verify container build (if applicable).** If the repo has a `Dockerfile` or `docker-compose.yml`, run `docker compose build` or `docker build .` to catch container-specific issues that local builds miss.
 
-5. **Always stage docs alongside code.** In every commit, include `CLAUDE.md`, `.claude/`, and `docs/` if they changed. Run `git diff --name-only` before committing to confirm nothing is left out.
+5. **Always stage docs alongside code.** In every commit, include documentation changes with the code they describe — `CLAUDE.md`, `.claude/`, top-level `docs/`, and doc-site sources (`apps/docs/`, `website/`, `src/pages/docs/`, `openapi.yaml`, Storybook stories, etc.) when they changed. Run `git diff --name-only` before committing to confirm doc updates are included whenever the underlying behavior changed.
 
 6. **Commit with Conventional Commits.** Format: `<type>(<optional scope>): <subject>` — types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `build`, `ci`. Keep the subject under 72 chars; put the *why* in the body when it's not obvious.
 
@@ -38,5 +42,6 @@ A repeatable, safe workflow for landing changes on `main`. Adapt each step to th
 
 ## Notes
 
+- In-app docs are part of the product surface; shipping code without updating them is incomplete work, same as skipping tests for touched code paths.
 - If the project defines its own merge workflow in `CLAUDE.md` or `docs/`, that takes precedence over this generic flow.
 - For protected branches or trunk-based workflows that require PRs, replace step 8 with: open a PR via `gh pr create`, wait for CI + review, then merge via `gh pr merge`.
