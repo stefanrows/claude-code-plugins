@@ -28,6 +28,11 @@ To refresh after I publish updates:
 
 A repeatable, safe workflow for landing changes on `main`: pre-merge lint/test/build checks, Conventional Commits, doc updates staged alongside code, explicit user confirmation before merge, and post-deploy monitoring.
 
+By default it always asks for confirmation before merging.
+
+> [!WARNING]
+> **Pre-authorized merges (v1.2.0+):** if your request contains an explicit waiver — **"merge without asking"**, **"no confirmation"**, or **"ship now"** — the skill skips the confirmation gate and merges to `main` immediately after checks pass. Only the *ask* is skipped: lint/test/build, project-specific rules in your `CLAUDE.md`, and pre-merge blockers still run, and any failure, caveated check, or unexpected file in the diff cancels the waiver and asks anyway. If you don't want this behavior, just never use those phrases — a plain "merge to main" or "ship this" always gets the confirmation prompt.
+
 Invoke the skill from Claude Code:
 
 ```
