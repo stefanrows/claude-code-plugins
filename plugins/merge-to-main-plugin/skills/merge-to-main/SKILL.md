@@ -41,6 +41,7 @@ A fast, safe workflow for landing changes on `main`. Operating principles: **sco
 - **Stage docs with the code they describe** in the same commit — `CLAUDE.md`, `.claude/`, `docs/`, doc-site sources, OpenAPI specs, Storybook stories. Check the staged list against the Phase 1 change set before committing.
 - **Conventional Commits:** `<type>(<optional scope>): <subject>` — types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `build`, `ci`. Subject under 72 chars; put the *why* in the body when it's not obvious.
 - **One confirmation before merge.** Present a single summary — branch, commits, changed files, check results (including the background container build) — and ask once. Don't drip-feed questions across the workflow; batch anything needing user input into this gate.
+- **Pre-authorized skip.** If the user's invocation explicitly waived confirmation — "merge without asking", "no confirmation", "ship now" — post the same summary but merge immediately instead of asking. A bare "merge to main" or "ship this" is intent, not authorization: it still gets the gate. Pre-authorization only skips the *ask* — never checks, project `CLAUDE.md` overrides, or pre-merge blockers — and it lapses on any failure or surprise (failed/caveated check, unexpected files in the diff, a blocker that applies): stop and ask regardless.
 
 ## Phase 5 — Merge, clean up, monitor
 
