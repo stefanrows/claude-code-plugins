@@ -4,44 +4,52 @@ description: Safe merge-to-main workflow with pre-merge checks, conventional com
 
 # Merge to Main Workflow
 
-A repeatable, safe workflow for landing changes on `main`. Adapt each step to the project's actual tooling — skip Docker if there's no `Dockerfile`, use whatever lint/test/build commands the project defines, etc. Detect what applies by reading `package.json`, `pyproject.toml`, `Makefile`, `Dockerfile`, `.github/workflows/`, or equivalent before assuming.
+A fast, safe workflow for landing changes on `main`. Operating principles: **scope once** (detect tooling and the change set in a single pass, then reuse it), **fail fast** (cheap checks first), **parallelize** (independent checks run concurrently), **skip what can't be affected** (don't run checks the change set can't break), and **one confirmation gate** (batch everything the user must approve into a single question).
 
 ## Setup
 
 - **Git auth**: Use GitHub CLI (`gh auth setup-git`) when available — avoid manual PAT or SSH configuration.
 
-## Workflow
+## Phase 1 — Scope (one pass, drives everything after)
 
-1. **Start fresh.** Pull latest `main` and create a new branch with a conventional prefix (`feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `test/`). Always create a fresh branch — never reuse an existing one for a new change.
+1. **Branch from fresh remote main** without touching the local `main` checkout: `git fetch origin && git switch -c <type>/<slug> origin/main`. Use a conventional prefix (`feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `test/`). Always a fresh branch — never reuse one.
+2. **Detect tooling once.** In one pass, read `package.json`, `pyproject.toml`, `Makefile`, `Dockerfile`, `docker-compose.yml`, `.github/workflows/`, and any docs app (`apps/docs`, `website/`, Docusaurus, VitePress, OpenAPI spec, Storybook). Note the exact lint/test/build/docs-build commands. Do not re-derive these later.
+3. **Compute the change set once**: `git diff --name-only origin/main...HEAD` (plus planned edits). From it, decide up front which checks apply:
+   - Source code changed → lint + tests + build (+ container build if a Dockerfile exists and code/deps changed).
+   - Behavior that docs describe changed (APIs, CLI, config/env, UI flows, permissions, error codes) → matching doc pages must be updated in this branch.
+   - Docs-only change → skip tests/build/container; run only the docs build and link checks if the project has them.
+   - Lockfile/dependency-only change → tests + build + container; lint of unchanged source adds nothing.
 
-2. **Update docs.** Keep all documentation surfaces current with the changes being shipped:
+## Phase 2 — Update docs (in-branch, never a follow-up)
 
-   - **Repo docs:** Revise `CLAUDE.md`, `README.md`, and any relevant files under `docs/`. Remove outdated content and consolidate duplicates.
-   - **In-app or routed docs (if present):** Before merging, check whether the project ships browsable docs — routes like `/docs` or `/api`, OpenAPI/Swagger specs, Storybook, or a separate docs app (`apps/docs`, `website/`, Docusaurus, VitePress, or equivalent). If the branch changes behavior those docs describe (APIs, CLI commands, config/env vars, UI flows, permissions, error codes), update the matching pages in the same branch — not as a follow-up. Treat stale live docs the same as a broken test: a blocker to merge.
+- **Repo docs:** revise `CLAUDE.md`, `README.md`, and relevant `docs/` files; remove outdated content, consolidate duplicates.
+- **In-app or routed docs (if detected in Phase 1):** update the matching pages in the same branch. Stale live docs are a merge blocker, same as a broken test.
 
-3. **Verify the build.** Run the project's lint, test, and build commands. Detect them from the project files; common examples:
-   - Node: `npm run lint && npm test && npm run build`
-   - Python: `ruff check && pytest && python -m build`
-   - Go: `go vet ./... && go test ./... && go build ./...`
-   - Rust: `cargo clippy && cargo test && cargo build --release`
-   - If the project defines a docs build (e.g. `npm run docs:build`, `mkdocs build`, `docusaurus build`), run it too — broken links, MDX errors, and missing pages should fail before merge. Detect the command from `package.json` scripts, `Makefile`, or CI workflows.
+## Phase 3 — Verify (fail fast, in parallel)
 
-4. **Verify container build (if applicable).** If the repo has a `Dockerfile` or `docker-compose.yml`, run `docker compose build` or `docker build .` to catch container-specific issues that local builds miss.
+- **Order cheap → expensive** so failures surface in seconds, not minutes: lint first, then tests, then build. Common commands (use what Phase 1 detected):
+  - Node: `npm run lint`, `npm test`, `npm run build`
+  - Python: `ruff check`, `pytest`, `python -m build`
+  - Go: `go vet ./...`, `go test ./...`, `go build ./...`
+  - Rust: `cargo clippy`, `cargo test`, `cargo build --release`
+- **Run independent checks concurrently** — lint, tests, and the docs build don't depend on each other; launch them in parallel rather than serially.
+- **Container build (if applicable):** start `docker compose build` / `docker build .` **in the background** and continue to Phase 4 while it runs; require it green before merging. If the Dockerfile runs the same compile/test steps internally, skip the redundant local build and let the image build serve as the build check.
+- Only run checks the Phase 1 change set can affect — a green check on untouched code is wasted time, not safety.
 
-5. **Always stage docs alongside code.** In every commit, include documentation changes with the code they describe — `CLAUDE.md`, `.claude/`, top-level `docs/`, and doc-site sources (`apps/docs/`, `website/`, `src/pages/docs/`, `openapi.yaml`, Storybook stories, etc.) when they changed. Run `git diff --name-only` before committing to confirm doc updates are included whenever the underlying behavior changed.
+## Phase 4 — Commit & confirm (single gate)
 
-6. **Commit with Conventional Commits.** Format: `<type>(<optional scope>): <subject>` — types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `build`, `ci`. Keep the subject under 72 chars; put the *why* in the body when it's not obvious.
+- **Stage docs with the code they describe** in the same commit — `CLAUDE.md`, `.claude/`, `docs/`, doc-site sources, OpenAPI specs, Storybook stories. Check the staged list against the Phase 1 change set before committing.
+- **Conventional Commits:** `<type>(<optional scope>): <subject>` — types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `build`, `ci`. Subject under 72 chars; put the *why* in the body when it's not obvious.
+- **One confirmation before merge.** Present a single summary — branch, commits, changed files, check results (including the background container build) — and ask once. Don't drip-feed questions across the workflow; batch anything needing user input into this gate.
 
-7. **Confirm before merging.** Always ask the user for explicit confirmation before merging to `main`. Summarize what's being merged so they can sanity-check.
+## Phase 5 — Merge, clean up, monitor
 
-8. **Merge and clean up.** After approval: merge the branch to `main`, push, then delete the branch locally and on the remote.
-
-9. **Monitor the deploy (if applicable).** If `main` auto-deploys (GitHub Actions, Vercel, Fly, etc.), watch the run and confirm health checks pass. Inspect `.github/workflows/` to find the relevant workflow.
-
-10. **Fix forward immediately.** If runtime errors appear post-deploy, create a `fix/` branch and ship a correction right away — never leave `main` broken.
+- After approval: merge to `main`, push, delete the branch locally and on the remote.
+- **If `main` auto-deploys** (GitHub Actions, Vercel, Fly, etc.): watch the run identified in Phase 1 and confirm health checks pass. Prefer watching in the background (`gh run watch` or polling) over blocking idle.
+- **Fix forward immediately.** If runtime errors appear post-deploy, create a `fix/` branch and ship a correction right away — never leave `main` broken.
 
 ## Notes
 
-- In-app docs are part of the product surface; shipping code without updating them is incomplete work, same as skipping tests for touched code paths.
 - If the project defines its own merge workflow in `CLAUDE.md` or `docs/`, that takes precedence over this generic flow.
-- For protected branches or trunk-based workflows that require PRs, replace step 8 with: open a PR via `gh pr create`, wait for CI + review, then merge via `gh pr merge`.
+- For protected branches or trunk-based workflows that require PRs, replace the merge in Phase 5 with: open a PR via `gh pr create`, wait for CI + review, then merge via `gh pr merge`. CI re-runs the same checks — don't duplicate slow suites locally if CI is the required gate; run only the fast local checks (lint, affected tests) before pushing.
+- In-app docs are part of the product surface; shipping code without updating them is incomplete work, same as skipping tests for touched code paths.
