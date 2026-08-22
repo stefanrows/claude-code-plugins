@@ -13,12 +13,16 @@ A fast, safe workflow for landing changes on `main`. Operating principles: **sco
 ## Phase 1 — Scope (one pass, drives everything after)
 
 1. **Branch from fresh remote main** without touching the local `main` checkout: `git fetch origin && git switch -c <type>/<slug> origin/main`. Use a conventional prefix (`feat/`, `fix/`, `docs/`, `chore/`, `refactor/`, `test/`). Always a fresh branch — never reuse one.
-2. **Detect tooling once.** In one pass, read `package.json`, `pyproject.toml`, `Makefile`, `Dockerfile`, `docker-compose.yml`, `.github/workflows/`, and any docs app (`apps/docs`, `website/`, Docusaurus, VitePress, OpenAPI spec, Storybook). Note the exact lint/test/build/docs-build commands. Do not re-derive these later.
+2. **Detect tooling once.** In one pass, read `package.json`, `pyproject.toml`, `Makefile`, `Dockerfile`, `docker-compose.yml`, `.github/workflows/`, and any docs app (`apps/docs`, `website/`, Docusaurus, VitePress, OpenAPI spec, Storybook). Also check `ProjectSettings/ProjectVersion.txt` — its presence means this is a **Unity** project; note the exact `m_EditorVersion` it contains (reuse it verbatim in Phase 3, never guess or use "latest installed"), and also note `Packages/manifest.json`, any `*.asmdef`, `.gitattributes` LFS rules, and Unity CI config (GameCI or Unity Build Automation in `.github/workflows/`). **If `ProjectVersion.txt` exists, read `references/unity.md` before Phase 3.** Note the exact lint/test/build/docs-build commands. Do not re-derive these later.
 3. **Compute the change set once**: `git diff --name-only origin/main...HEAD` (plus planned edits). From it, decide up front which checks apply:
    - Source code changed → lint + tests + build (+ container build if a Dockerfile exists and code/deps changed).
    - Behavior that docs describe changed (APIs, CLI, config/env, UI flows, permissions, error codes) → matching doc pages must be updated in this branch.
    - Docs-only change → skip tests/build/container; run only the docs build and link checks if the project has them.
    - Lockfile/dependency-only change → tests + build + container; lint of unchanged source adds nothing.
+   - Unity — `Assets/**/*.cs`, `*.asmdef`, `Packages/manifest.json` changed → asset integrity + compile + EditMode tests.
+   - Unity — `*.unity`, `*.prefab`, `*.asset`, `*.mat`, `*.controller` (YAML) changed → asset integrity only, no compile needed.
+   - Unity — `ProjectSettings/**` changed → asset integrity + compile (build settings can break the player build).
+   - Unity — art/audio/video binaries changed → asset integrity (LFS check) only.
 
 ## Phase 2 — Update docs (in-branch, never a follow-up)
 
@@ -27,11 +31,14 @@ A fast, safe workflow for landing changes on `main`. Operating principles: **sco
 
 ## Phase 3 — Verify (fail fast, in parallel)
 
+- **Unity asset integrity (tier 0, run first):** pure `git`/`grep` checks, done in under a second — before lint. Blockers: an added file under `Assets/` missing its sibling `.meta` (or an orphan `.meta`); conflict markers (`<<<<<<<`) left in any `*.unity`/`*.prefab`/`*.asset`; a generated path in the diff (`Library/`, `Temp/`, `Obj/`, `Logs/`, `Build/`, `UserSettings/`, `*.csproj`, `*.sln`); a file over ~10 MB added outside a Git LFS rule in `.gitattributes`. Full commands in `references/unity.md`.
 - **Order cheap → expensive** so failures surface in seconds, not minutes: lint first, then tests, then build. Common commands (use what Phase 1 detected):
   - Node: `npm run lint`, `npm test`, `npm run build`
   - Python: `ruff check`, `pytest`, `python -m build`
   - Go: `go vet ./...`, `go test ./...`, `go build ./...`
   - Rust: `cargo clippy`, `cargo test`, `cargo build --release`
+  - Unity: asset integrity (above) → EditMode tests via batchmode (see `references/unity.md`) — the test run IS the compile gate, Unity refuses to run tests if compilation fails.
+- **Unity Editor unreachable (WSL2, project lock held, no matching Editor version installed):** skip the local run, say so explicitly in the Phase 4 summary, and treat CI as the gate. Never report a check as passed that did not run.
 - **Run independent checks concurrently** — lint, tests, and the docs build don't depend on each other; launch them in parallel rather than serially.
 - **Container build (if applicable):** start `docker compose build` / `docker build .` **in the background** and continue to Phase 4 while it runs; require it green before merging. If the Dockerfile runs the same compile/test steps internally, skip the redundant local build and let the image build serve as the build check.
 - Only run checks the Phase 1 change set can affect — a green check on untouched code is wasted time, not safety.
@@ -39,6 +46,7 @@ A fast, safe workflow for landing changes on `main`. Operating principles: **sco
 ## Phase 4 — Commit & confirm (single gate)
 
 - **Stage docs with the code they describe** in the same commit — `CLAUDE.md`, `.claude/`, `docs/`, doc-site sources, OpenAPI specs, Storybook stories. Check the staged list against the Phase 1 change set before committing.
+- **Unity:** stage `ProjectSettings/`, `Packages/manifest.json`, and `.meta` files alongside the assets they describe. A `.meta` file is never an optional extra — staging an asset without its `.meta` is a broken commit.
 - **Conventional Commits:** `<type>(<optional scope>): <subject>` — types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `build`, `ci`. Subject under 72 chars; put the *why* in the body when it's not obvious.
 - **One confirmation before merge.** Present a single summary — branch, commits, changed files, check results (including the background container build) — and ask once. Don't drip-feed questions across the workflow; batch anything needing user input into this gate.
 - **Pre-authorized skip.** If the user's invocation explicitly waived confirmation — "merge without asking", "no confirmation", "ship now" — post the same summary but merge immediately instead of asking. A bare "merge to main" or "ship this" is intent, not authorization: it still gets the gate. Pre-authorization only skips the *ask* — never checks, project `CLAUDE.md` overrides, or pre-merge blockers — and it lapses on any failure or surprise (failed/caveated check, unexpected files in the diff, a blocker that applies): stop and ask regardless.
@@ -47,6 +55,7 @@ A fast, safe workflow for landing changes on `main`. Operating principles: **sco
 
 - After approval: merge to `main`, push, delete the branch locally and on the remote.
 - **If `main` auto-deploys** (GitHub Actions, Vercel, Fly, etc.): watch the run identified in Phase 1 and confirm health checks pass. Prefer watching in the background (`gh run watch` or polling) over blocking idle.
+- **Unity:** `main` typically triggers a Unity Build Automation / GameCI **player build**. IL2CPP / AOT / managed-stripping failures surface only there — the local EditMode gate cannot catch them — so watching that run is mandatory, not optional.
 - **Fix forward immediately.** If runtime errors appear post-deploy, create a `fix/` branch and ship a correction right away — never leave `main` broken.
 
 ## Notes
@@ -54,3 +63,4 @@ A fast, safe workflow for landing changes on `main`. Operating principles: **sco
 - If the project defines its own merge workflow in `CLAUDE.md` or `docs/`, that takes precedence over this generic flow.
 - For protected branches or trunk-based workflows that require PRs, replace the merge in Phase 5 with: open a PR via `gh pr create`, wait for CI + review, then merge via `gh pr merge`. CI re-runs the same checks — don't duplicate slow suites locally if CI is the required gate; run only the fast local checks (lint, affected tests) before pushing.
 - In-app docs are part of the product surface; shipping code without updating them is incomplete work, same as skipping tests for touched code paths.
+- **Unity cross-platform (macOS + Windows/WSL2):** enforce `text eol=lf` on Unity YAML (`*.unity`, `*.prefab`, `*.asset`) in `.gitattributes` — otherwise line-ending drift causes whole-file spurious diffs across OSes. Watch asset-path casing too: case-insensitive APFS silently accepts what case-sensitive ext4/CI rejects.

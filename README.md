@@ -33,6 +33,8 @@ By default it always asks for confirmation before merging.
 > [!WARNING]
 > **Pre-authorized merges (v1.2.0+):** if your request contains an explicit waiver — **"merge without asking"**, **"no confirmation"**, or **"ship now"** — the skill skips the confirmation gate and merges to `main` immediately after checks pass. Only the *ask* is skipped: lint/test/build, project-specific rules in your `CLAUDE.md`, and pre-merge blockers still run, and any failure, caveated check, or unexpected file in the diff cancels the waiver and asks anyway. If you don't want this behavior, just never use those phrases — a plain "merge to main" or "ship this" always gets the confirmation prompt.
 
+**Unity support (v1.3.0+):** detected automatically via `ProjectSettings/ProjectVersion.txt`. The merge gate is asset integrity (missing `.meta` files, conflict markers in scene/prefab YAML, committed `Library/`/generated paths, large binaries outside Git LFS) plus a clean compile and green EditMode tests via Unity batchmode. When the local Editor can't run (e.g. from WSL2, or the project is locked open elsewhere), the skill skips the local run, says so explicitly, and treats CI (GameCI / Unity Build Automation) as the gate instead. See `plugins/merge-to-main-plugin/skills/merge-to-main/references/unity.md` for the full details.
+
 Invoke the skill from Claude Code:
 
 ```
@@ -53,7 +55,9 @@ Or just ask Claude to "merge to main", "ship", "land", or "release" — the skil
         │   └── plugin.json   # plugin manifest
         └── skills/
             └── merge-to-main/
-                └── SKILL.md
+                ├── SKILL.md
+                └── references/
+                    └── unity.md   # Unity-specific detail, read on detection
 ```
 
 See the [plugin marketplace docs](https://code.claude.com/docs/en/plugin-marketplaces) for the full schema and hosting details.
