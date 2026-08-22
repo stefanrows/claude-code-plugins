@@ -53,7 +53,7 @@ A fast, safe workflow for landing changes on `main`. Operating principles: **sco
 
 ## Phase 5 — Merge, clean up, monitor
 
-- After approval: merge to `main`, push, delete the branch locally and on the remote.
+- **Default merge method: PR, wait for CI.** After approval, push the branch, open a PR via `gh pr create`, wait for CI to go green, then merge via `gh pr merge`. Delete the branch locally and on the remote after merge. Don't ask which merge method to use — this is the default. Use a local fast-forward merge (merge to local `main`, push directly, skipping the PR/CI wait) only when the user explicitly asks for it (e.g. "local merge", "skip the PR", "fast-forward") or the project's own `CLAUDE.md`/`docs/` says so.
 - **If `main` auto-deploys** (GitHub Actions, Vercel, Fly, etc.): watch the run identified in Phase 1 and confirm health checks pass. Prefer watching in the background (`gh run watch` or polling) over blocking idle.
 - **Unity:** `main` typically triggers a Unity Build Automation / GameCI **player build**. IL2CPP / AOT / managed-stripping failures surface only there — the local EditMode gate cannot catch them — so watching that run is mandatory, not optional.
 - **Fix forward immediately.** If runtime errors appear post-deploy, create a `fix/` branch and ship a correction right away — never leave `main` broken.
@@ -61,6 +61,6 @@ A fast, safe workflow for landing changes on `main`. Operating principles: **sco
 ## Notes
 
 - If the project defines its own merge workflow in `CLAUDE.md` or `docs/`, that takes precedence over this generic flow.
-- For protected branches or trunk-based workflows that require PRs, replace the merge in Phase 5 with: open a PR via `gh pr create`, wait for CI + review, then merge via `gh pr merge`. CI re-runs the same checks — don't duplicate slow suites locally if CI is the required gate; run only the fast local checks (lint, affected tests) before pushing.
+- CI re-runs the same checks the PR path waits on — don't duplicate slow suites locally; run only the fast local checks (lint, affected tests) before pushing.
 - In-app docs are part of the product surface; shipping code without updating them is incomplete work, same as skipping tests for touched code paths.
 - **Unity cross-platform (macOS + Windows/WSL2):** enforce `text eol=lf` on Unity YAML (`*.unity`, `*.prefab`, `*.asset`) in `.gitattributes` — otherwise line-ending drift causes whole-file spurious diffs across OSes. Watch asset-path casing too: case-insensitive APFS silently accepts what case-sensitive ext4/CI rejects.
