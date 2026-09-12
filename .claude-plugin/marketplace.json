@@ -11,7 +11,7 @@
       "name": "merge-to-main-plugin",
       "source": "./plugins/merge-to-main-plugin",
       "description": "Safe merge-to-main workflow with pre-merge checks, conventional commits, doc updates, and post-deploy verification.",
-      "version": "1.3.0",
+      "version": "1.4.0",
       "author": {
         "name": "Stefan Rows",
         "email": "stefanrows@gmail.com"

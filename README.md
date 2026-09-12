@@ -1,8 +1,8 @@
 # stefanrows-plugins
 
-A [Claude Code](https://docs.claude.com/en/docs/claude-code) plugin marketplace by [Stefan Rows](https://github.com/stefanrows).
+A plugin marketplace for [Claude Code](https://docs.claude.com/en/docs/claude-code) and [Codex](https://developers.openai.com/codex/) by [Stefan Rows](https://github.com/stefanrows).
 
-## Install the marketplace
+## Install in Claude Code
 
 In Claude Code, run:
 
@@ -21,6 +21,24 @@ To refresh after I publish updates:
 ```
 /plugin marketplace update stefanrows-plugins
 ```
+
+## Install in Codex
+
+Add this GitHub repository as a marketplace, then install the plugin:
+
+```sh
+codex plugin marketplace add stefanrows/claude-code-plugins
+codex plugin add merge-to-main-plugin@stefanrows-plugins
+```
+
+To refresh after updates:
+
+```sh
+codex plugin marketplace upgrade stefanrows-plugins
+codex plugin add merge-to-main-plugin@stefanrows-plugins
+```
+
+Start a new Codex task after installing or updating so it loads the new plugin version.
 
 ## Plugins
 
@@ -43,14 +61,23 @@ Invoke the skill from Claude Code:
 
 Or just ask Claude to "merge to main", "ship", "land", or "release" — the skill is wired to those triggers.
 
+In Codex, use the same natural-language requests, such as "merge to main",
+"ship", "land", or "release". Codex discovers the bundled `merge-to-main`
+skill from its description.
+
 ## Repository layout
 
 ```
 .
+├── .agents/
+│   └── plugins/
+│       └── marketplace.json  # Codex marketplace catalog
 ├── .claude-plugin/
 │   └── marketplace.json      # marketplace catalog
 └── plugins/
     └── merge-to-main-plugin/
+        ├── .codex-plugin/
+        │   └── plugin.json   # Codex plugin manifest
         ├── .claude-plugin/
         │   └── plugin.json   # plugin manifest
         └── skills/
@@ -60,7 +87,9 @@ Or just ask Claude to "merge to main", "ship", "land", or "release" — the skil
                     └── unity.md   # Unity-specific detail, read on detection
 ```
 
-See the [plugin marketplace docs](https://code.claude.com/docs/en/plugin-marketplaces) for the full schema and hosting details.
+See the [Claude Code marketplace docs](https://code.claude.com/docs/en/plugin-marketplaces)
+and [OpenAI's Codex plugin docs](https://developers.openai.com/codex/build-plugins)
+for schema, packaging, and hosting details.
 
 ## License
 

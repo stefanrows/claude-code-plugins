@@ -1,0 +1,38 @@
+{
+  "name": "merge-to-main-plugin",
+  "version": "1.4.0",
+  "description": "A safe merge-to-main workflow with project-aware checks, Conventional Commits, documentation updates, and post-deploy verification.",
+  "author": {
+    "name": "Stefan Rows",
+    "email": "stefanrows@gmail.com",
+    "url": "https://github.com/stefanrows"
+  },
+  "homepage": "https://github.com/stefanrows/claude-code-plugins",
+  "repository": "https://github.com/stefanrows/claude-code-plugins",
+  "license": "MIT",
+  "keywords": [
+    "git",
+    "merge",
+    "workflow",
+    "release",
+    "ci",
+    "unity",
+    "gamedev"
+  ],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "Merge to Main",
+    "shortDescription": "Safely land changes on main.",
+    "longDescription": "Runs project-aware pre-merge checks, updates related documentation, creates Conventional Commits, waits for CI, and verifies deployments before considering a merge complete.",
+    "developerName": "Stefan Rows",
+    "category": "Productivity",
+    "capabilities": [
+      "Write"
+    ],
+    "defaultPrompt": [
+      "Merge this branch to main safely.",
+      "Ship these changes after running the appropriate checks.",
+      "Prepare this branch to land on main."
+    ]
+  }
+}
