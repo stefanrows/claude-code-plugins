@@ -1,0 +1,20 @@
+{
+  "name": "stefanrows-plugins",
+  "interface": {
+    "displayName": "Stefan Rows Plugins"
+  },
+  "plugins": [
+    {
+      "name": "merge-to-main-plugin",
+      "source": {
+        "source": "local",
+        "path": "./plugins/merge-to-main-plugin"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

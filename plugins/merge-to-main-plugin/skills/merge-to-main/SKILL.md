@@ -1,4 +1,5 @@
 ---
+name: merge-to-main
 description: Safe merge-to-main workflow with pre-merge checks, conventional commits, doc updates, and post-deploy verification. Use when the user asks to merge, ship, land, or release changes to the main branch.
 ---
 
@@ -26,7 +27,7 @@ A fast, safe workflow for landing changes on `main`. Operating principles: **sco
 
 ## Phase 2 — Update docs (in-branch, never a follow-up)
 
-- **Repo docs:** revise `CLAUDE.md`, `README.md`, and relevant `docs/` files; remove outdated content, consolidate duplicates.
+- **Repo docs:** revise the relevant agent guidance (`AGENTS.md` and/or `CLAUDE.md`), `README.md`, and relevant `docs/` files; remove outdated content and consolidate duplicates.
 - **In-app or routed docs (if detected in Phase 1):** update the matching pages in the same branch. Stale live docs are a merge blocker, same as a broken test.
 
 ## Phase 3 — Verify (fail fast, in parallel)
@@ -45,7 +46,7 @@ A fast, safe workflow for landing changes on `main`. Operating principles: **sco
 
 ## Phase 4 — Commit & confirm (single gate)
 
-- **Stage docs with the code they describe** in the same commit — `CLAUDE.md`, `.claude/`, `docs/`, doc-site sources, OpenAPI specs, Storybook stories. Check the staged list against the Phase 1 change set before committing.
+- **Stage docs with the code they describe** in the same commit — `AGENTS.md`, `CLAUDE.md`, `.agents/`, `.claude/`, `docs/`, doc-site sources, OpenAPI specs, Storybook stories. Check the staged list against the Phase 1 change set before committing.
 - **Unity:** stage `ProjectSettings/`, `Packages/manifest.json`, and `.meta` files alongside the assets they describe. A `.meta` file is never an optional extra — staging an asset without its `.meta` is a broken commit.
 - **Conventional Commits:** `<type>(<optional scope>): <subject>` — types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `build`, `ci`. Subject under 72 chars; put the *why* in the body when it's not obvious.
 - **One confirmation before merge.** Present a single summary — branch, commits, changed files, check results (including the background container build) — and ask once. Don't drip-feed questions across the workflow; batch anything needing user input into this gate.
@@ -60,7 +61,7 @@ A fast, safe workflow for landing changes on `main`. Operating principles: **sco
 
 ## Notes
 
-- If the project defines its own merge workflow in `CLAUDE.md` or `docs/`, that takes precedence over this generic flow.
+- If the project defines its own merge workflow in `AGENTS.md`, `CLAUDE.md`, or `docs/`, that takes precedence over this generic flow.
 - CI re-runs the same checks the PR path waits on — don't duplicate slow suites locally; run only the fast local checks (lint, affected tests) before pushing.
 - In-app docs are part of the product surface; shipping code without updating them is incomplete work, same as skipping tests for touched code paths.
 - **Unity cross-platform (macOS + Windows/WSL2):** enforce `text eol=lf` on Unity YAML (`*.unity`, `*.prefab`, `*.asset`) in `.gitattributes` — otherwise line-ending drift causes whole-file spurious diffs across OSes. Watch asset-path casing too: case-insensitive APFS silently accepts what case-sensitive ext4/CI rejects.
