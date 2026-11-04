@@ -50,14 +50,18 @@ A fast, safe workflow for landing changes on `main`. Operating principles: **sco
 - **Unity:** stage `ProjectSettings/`, `Packages/manifest.json`, and `.meta` files alongside the assets they describe. A `.meta` file is never an optional extra — staging an asset without its `.meta` is a broken commit.
 - **Conventional Commits:** `<type>(<optional scope>): <subject>` — types: `feat`, `fix`, `docs`, `chore`, `refactor`, `test`, `perf`, `build`, `ci`. Subject under 72 chars; put the *why* in the body when it's not obvious.
 - **One confirmation before merge.** Present a single summary — branch, commits, changed files, check results (including the background container build) — and ask once. Don't drip-feed questions across the workflow; batch anything needing user input into this gate.
-- **Pre-authorized skip.** If the user's invocation explicitly waived confirmation — "merge without asking", "no confirmation", "ship now" — post the same summary but merge immediately instead of asking. A bare "merge to main" or "ship this" is intent, not authorization: it still gets the gate. Pre-authorization only skips the *ask* — never checks, project `CLAUDE.md` overrides, or pre-merge blockers — and it lapses on any failure or surprise (failed/caveated check, unexpected files in the diff, a blocker that applies): stop and ask regardless.
+- **"ship now" = autonomous mode.** If the invocation explicitly waived confirmation — "ship now", "merge without asking", "no confirmation" — post the same summary and merge immediately. A bare "merge to main" or "ship this" is intent, not authorization: it still gets the gate. In autonomous mode:
+  - No questions at all: wherever you would ask, take the sensible default and note it in the summary.
+  - Checks still run. A failed check is fixed in-branch and re-run, at most 2 fix attempts per check. Still red → do not merge; report what was tried. Never merge red.
+  - Unexpected files in the diff: leave them out of the commit and list them in the summary. Don't stop.
+  - Project `CLAUDE.md`/`AGENTS.md` blockers are not waivable by "ship now". If one applies, stop and name it.
 
 ## Phase 5 — Merge, clean up, monitor
 
 - **Default merge method: PR, wait for CI.** After approval, push the branch, open a PR via `gh pr create`, wait for CI to go green, then merge via `gh pr merge`. Delete the branch locally and on the remote after merge. Don't ask which merge method to use — this is the default. Use a local fast-forward merge (merge to local `main`, push directly, skipping the PR/CI wait) only when the user explicitly asks for it (e.g. "local merge", "skip the PR", "fast-forward") or the project's own `CLAUDE.md`/`docs/` says so.
 - **If `main` auto-deploys** (GitHub Actions, Vercel, Fly, etc.): watch the run identified in Phase 1 and confirm health checks pass. Prefer watching in the background (`gh run watch` or polling) over blocking idle.
 - **Unity:** `main` typically triggers a Unity Build Automation / GameCI **player build**. IL2CPP / AOT / managed-stripping failures surface only there — the local EditMode gate cannot catch them — so watching that run is mandatory, not optional.
-- **Fix forward immediately.** If runtime errors appear post-deploy, create a `fix/` branch and ship a correction right away — never leave `main` broken.
+- **Fix forward immediately.** If runtime errors appear post-deploy, create a `fix/` branch and ship a correction right away — never leave `main` broken. Outside "ship now", the fix PR gets the normal single gate. Under "ship now" it needs no approval: one fix-forward cycle (same checks, same PR/CI path); if `main` is still unhealthy after it, `git revert` the merge commit, push, and report.
 
 ## Notes
 
